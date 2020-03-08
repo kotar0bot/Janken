@@ -2,6 +2,9 @@ package myapplication.example.com.janken
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.preference.PreferenceManager
+import android.provider.Settings.Global.putInt
+import androidx.core.content.edit
 import kotlinx.android.synthetic.main.activity_result.*
 
 class ResultActivity : AppCompatActivity() {
@@ -33,7 +36,7 @@ class ResultActivity : AppCompatActivity() {
             else -> gu
         }
 
-        val comHand = (Math.random() * 3).toInt()
+        val comHand = getHand()
         when(comHand){
             gu -> comHandImage.setImageResource(R.drawable.com_gu)
             choki -> comHandImage.setImageResource(R.drawable.com_choki)
@@ -49,5 +52,61 @@ class ResultActivity : AppCompatActivity() {
         }
 
         backButton.setOnClickListener { finish() }
+
+        saveData(myHand, comHand, gameResult)
+    }
+
+    private fun saveData(myHand: Int, comHand: Int, gameResult: Int){
+        val pref = PreferenceManager.getDefaultSharedPreferences(this)
+        val gameCount = pref.getInt("GAME_COUNT", 0)
+        val winningStreakCount = pref.getInt("WINNING_STREAK_COUNT", 0)
+        val lastComHand = pref.getInt("LAST_COM_HAND", 0)
+        val lastGameResult = pref.getInt("GAME_RESULT", -1)
+
+        val edtWinningStreakCount: Int =
+            when {
+                lastGameResult == 2 && gameResult == 2 ->
+                    winningStreakCount + 1
+                else ->
+                    0
+            }
+
+        val editor = pref.edit()
+        pref.edit{
+            putInt("GAME_COUNT", gameCount + 1)
+            putInt("WINNING_STREAK_COUNT", edtWinningStreakCount)
+            putInt("LAST_MY_HAND", myHand)
+            putInt("LAST_COM_HAND", comHand)
+            putInt("BEFORE_LAST_COM_HAND", lastComHand)
+            putInt("GAME_RESULT", gameResult)
+        }
+    }
+
+    private fun getHand(): Int{
+        var hand = (Math.random() * 3).toInt()
+        val pref = PreferenceManager.getDefaultSharedPreferences(this)
+        val gameCount = pref.getInt("GAME_COUNT", 0)
+        val winningStreakCount = pref.getInt("WINNING_STREAK_COUNT", 0)
+        val lastMyHand = pref.getInt("LAST_MY_HAND", 0)
+        val lasComHand = pref.getInt("LAST_COM_HAND", 0)
+        val beforeLastCommand = pref.getInt("BEFORE_LAST_COM_HAND", 0)
+        val gameResult = pref.getInt("GAME_RESULT", -1)
+
+        if(gameCount == 1){
+            if(gameResult == 2){
+                while (lasComHand == hand){
+                    hand = (Math.random() * 3).toInt()
+                }
+            } else if(gameResult == 1){
+              hand = (lastMyHand - 1 + 3) % 3
+            }
+        } else if(winningStreakCount > 0){
+            if(beforeLastCommand == lasComHand){
+                while(lasComHand == hand){
+                    hand = (Math.random() * 3).toInt()
+                }
+            }
+        }
+        return hand
     }
 }
